@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HidroAPI · Regionalização Mensal · Tocantins</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
+<script src="https://unpkg.com/shpjs@4.0.2/dist/shp.js"></script>
+
+<style>
+:root {
+  --bg: #060c16;
+  --surface: #0d1626;
+  --surface2: #132035;
+  --surface3: #1a2d4a;
+  --border: #1e3a5f;
+  --border2: rgba(0,212,255,0.15);
+  --accent: #00d4ff;
+  --accent2: #0077b6;
+  --accent3: #48cae4;
+  --warn: #f0a500;
+  --success: #00c97a;
+  --danger: #ff4757;
+  --text: #dceaf8;
+  --muted: #5a7a9a;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  display: flex;
+  flex-direction: column;
+}
+
+/* TOPBAR */
+.topbar {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 20px; gap: 16px; flex-shrink: 0; z-index: 1000;
+}
+.logo-block { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 0 16px rgba(0,212,255,0.25);
+}
+.logo-text h1 {
+  font-size: 1rem; font-weight: 800;
+  background: linear-gradient(90deg, var(--accent), #90e0ef);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo-text p {
+  font-family: var(--mono); font-size: 0.55rem;
+  color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 1px;
+}
+.topbar-sep { flex: 1; }
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.18);
+  color: var(--accent3); font-family: var(--mono); font-size: 0.62rem;
+  padding: 4px 10px; border-radius: 100px; letter-spacing: 0.05em;
+}
+.badge::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success); box-shadow: 0 0 7px var(--success);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+/* MAIN */
+.main { flex: 1; display: flex; overflow: hidden; }
+
+/* PANEL */
+.panel {
+  width: 420px; min-width: 340px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden; flex-shrink: 0;
+}
+.panel-tabs {
+  display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.ptab {
+  flex: 1; padding: 10px 4px;
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 500;
+  text-align: center; cursor: pointer; color: var(--muted);
+  border-bottom: 2px solid transparent; transition: all 0.2s;
+  text-transform: uppercase; letter-spacing: 0.05em; border: none;
+  background: transparent;
+}
+.ptab:hover { color: var(--text); }
+.ptab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+
+.panel-body { flex: 1; overflow-y: auto; padding: 14px; }
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-track { background: transparent; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* MAP */
+#map { flex: 1; height: 100%; }
+
+/* FORM */
+.section-title {
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; margin-top: 14px;
+}
+.section-title:first-child { margin-top: 0; }
+.section-title::before {
+  content: ''; width: 3px; height: 12px;
+  background: var(--accent); border-radius: 2px;
+}
+
+label {
+  display: block; font-family: var(--mono); font-size: 0.65rem;
+  color: var(--muted); margin-bottom: 4px; letter-spacing: 0.04em;
+}
+
+input[type=number], input[type=text], select, textarea {
+  width: 100%;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--mono); font-size: 0.82rem;
+  padding: 8px 10px; border-radius: 7px; outline: none;
+  transition: border-color 0.2s; margin-bottom: 8px;
+}
+textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,212,255,0.1);
+}
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.5; }
+select option { background: var(--surface2); }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+.btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: #000; font-family: var(--sans); font-weight: 700;
+  font-size: 0.82rem; letter-spacing: 0.04em;
+  border: none; border-radius: 8px; padding: 10px 16px;
+  cursor: pointer; transition: opacity 0.2s, transform 0.15s; margin-top: 4px;
+}
+.btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+.btn-sm {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); font-family: var(--mono); font-size: 0.68rem;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  transition: all 0.2s; white-space: nowrap;
+}
+.btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-danger {
+  background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.3);
+  color: var(--danger); font-family: var(--mono); font-size: 0.68rem;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+.btn-danger:hover { background: rgba(255,71,87,0.2); }
+
+.btn-copy {
+  background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2);
+  color: var(--accent3); font-family: var(--mono); font-size: 0.68rem;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+.btn-copy:hover { background: rgba(0,212,255,0.15); }
+.btn-copy.copied { background: rgba(0,201,122,0.15); border-color: var(--success); color: var(--success); }
+
+/* POINT CARD */
+.point-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px; margin-bottom: 8px;
+  animation: fadeIn 0.2s ease;
+}
+.point-card-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.point-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: #000; font-weight: 700; font-size: 0.62rem;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.point-card-header .coords {
+  flex: 1; font-family: var(--mono); font-size: 0.72rem; color: var(--accent3);
+}
+.point-card-header .origin {
+  font-family: var(--mono); font-size: 0.6rem; color: var(--muted);
+}
+.point-card .field-row { margin-top: 4px; }
+.point-status {
+  font-family: var(--mono); font-size: 0.6rem; padding: 2px 6px;
+  border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;
+}
+.point-status.valid { background: rgba(0,201,122,0.1); color: var(--success); }
+.point-status.invalid { background: rgba(255,71,87,0.1); color: var(--danger); }
+.point-remove {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 0.8rem; padding: 2px 6px; transition: color 0.2s;
+}
+.point-remove:hover { color: var(--danger); }
+
+/* RESULT */
+.result-card {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 14px; margin-top: 10px;
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+.result-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--mono); font-size: 0.68rem;
+}
+.result-table th {
+  text-align: left; font-size: 0.58rem; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted);
+  padding: 6px 6px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--surface2);
+}
+.result-table td {
+  padding: 5px 6px; border-bottom: 1px solid rgba(30,58,95,0.3); color: var(--text);
+}
+.result-table tr:last-child td { border-bottom: none; }
+.result-table .highlight { color: var(--accent); font-weight: 500; }
+
+.station-selector {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; flex-wrap: wrap;
+}
+.station-chip {
+  padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  font-family: var(--mono); font-size: 0.65rem;
+  border: 1px solid var(--border); color: var(--muted);
+  transition: all 0.2s; white-space: nowrap;
+}
+.station-chip:hover { border-color: var(--accent); color: var(--accent); }
+.station-chip.active { background: rgba(0,212,255,0.1); border-color: var(--accent); color: var(--accent); }
+
+/* UPLOAD */
+.upload-zone {
+  border: 2px dashed var(--border); border-radius: 9px;
+  padding: 16px; text-align: center; cursor: pointer;
+  transition: all 0.2s; margin-bottom: 10px;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--accent); background: rgba(0,212,255,0.04);
+}
+.upload-zone input { display: none; }
+.upload-icon { font-size: 1.6rem; margin-bottom: 4px; }
+.upload-label { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); }
+.upload-label strong { color: var(--accent3); }
+.upload-hint { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); margin-top: 3px; opacity: 0.7; }
+
+/* STATIONS TABLE */
+.search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.search-row input { margin: 0; flex: 1; }
+
+.stations-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--mono); font-size: 0.68rem;
+}
+.stations-table th {
+  text-align: left; font-size: 0.58rem; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted);
+  padding: 6px 6px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--surface);
+}
+.stations-table td {
+  padding: 5px 6px; border-bottom: 1px solid rgba(30,58,95,0.3); color: var(--text);
+}
+.stations-table tr:hover td { background: rgba(0,212,255,0.03); cursor: pointer; }
+.code-cell { color: var(--accent3); font-weight: 500; }
+
+/* MAP CONTROLS */
+.map-toolbar {
+  position: absolute; top: 12px; right: 12px; z-index: 500;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.map-btn {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--mono); font-size: 0.68rem;
+  padding: 7px 12px; border-radius: 7px; cursor: pointer;
+  transition: all 0.2s; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.map-btn:hover { border-color: var(--accent); color: var(--accent); }
+.map-btn.active { background: rgba(0,212,255,0.12); border-color: var(--accent); color: var(--accent); }
+
+.map-coord-bar {
+  position: absolute; bottom: 10px; left: 10px; z-index: 500;
+  background: rgba(6,12,22,0.88); border: 1px solid var(--border);
+  backdrop-filter: blur(8px); border-radius: 7px;
+  padding: 5px 12px; font-family: var(--mono); font-size: 0.68rem;
+  color: var(--muted); pointer-events: none;
+}
+.map-coord-bar span { color: var(--accent3); }
+
+/* LEAFLET */
+.leaflet-control-zoom a {
+  background: var(--surface) !important; color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-control-zoom a:hover { background: var(--surface2) !important; color: var(--accent) !important; }
+.custom-marker-pin {
+  width: 16px; height: 16px; border-radius: 50% 50% 50% 0;
+  background: var(--accent); border: 2px solid #fff;
+  transform: rotate(-45deg); box-shadow: 0 0 10px rgba(0,212,255,0.6);
+}
+.custom-marker-station {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--success); border: 2px solid rgba(255,255,255,0.6);
+  box-shadow: 0 0 8px rgba(0,201,122,0.5);
+}
+.leaflet-tooltip {
+  background: var(--surface) !important; border: 1px solid var(--border) !important;
+  color: var(--text) !important; font-family: var(--mono) !important;
+  font-size: 0.7rem !important; border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+  padding: 5px 9px !important;
+}
+
+hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+details { margin-top: 8px; }
+summary {
+  cursor: pointer; font-family: var(--mono); font-size: 0.68rem;
+  color: var(--muted); padding: 5px 0; user-select: none; list-style: none;
+}
+summary::-webkit-details-marker { display: none; }
+summary::before { content: '▶  '; font-size: 0.55rem; }
+details[open] summary::before { content: '▼  '; }
+pre {
+  background: #070d18; border: 1px solid var(--border); border-radius: 7px;
+  padding: 10px; overflow-x: auto; font-size: 0.68rem; color: var(--accent3);
+  margin-top: 6px; line-height: 1.5; max-height: 240px; overflow-y: auto;
+}
+
+.tag {
+  display: inline-flex; align-items: center;
+  background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.18);
+  color: var(--accent3); font-family: var(--mono); font-size: 0.58rem;
+  padding: 2px 7px; border-radius: 4px; letter-spacing: 0.04em; margin-left: 5px;
+}
+
+.spinner {
+  display: inline-block; width: 13px; height: 13px;
+  border: 2px solid rgba(0,0,0,0.2); border-top-color: #000;
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+  vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-box {
+  background: rgba(255,71,87,0.07); border: 1px solid rgba(255,71,87,0.25);
+  border-radius: 7px; padding: 10px 12px; color: var(--danger);
+  font-family: var(--mono); font-size: 0.75rem; margin-top: 8px;
+}
+
+.output-box {
+  background: #070d18; border: 1px solid var(--border); border-radius: 7px;
+  padding: 10px; font-family: var(--mono); font-size: 0.68rem;
+  color: var(--text); line-height: 1.6; white-space: pre-wrap;
+  max-height: 300px; overflow-y: auto; margin-top: 6px;
+}
+
+.all-stations-select {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--mono); font-size: 0.72rem;
+  padding: 6px 8px; border-radius: 6px; outline: none; margin-top: 6px;
+}
+
+@media (max-width: 700px) {
+  .panel { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--border); }
+  .main { flex-direction: column; }
+  #map { min-height: 40vh; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo-block">
+    <div class="logo-icon">🌊</div>
+    <div class="logo-text">
+      <h1>HidroAPI</h1>
+      <p>Regionalização Mensal · Q90 · Tocantins</p>
+    </div>
+  </div>
+  <div class="topbar-sep"></div>
+  <div class="badge">v3.0 · Online</div>
+</div>
+
+<div class="main">
+  <div class="panel">
+    <div class="panel-tabs">
+      <button class="ptab active" onclick="switchTab('entrada')">📥 Entrada</button>
+      <button class="ptab" onclick="switchTab('resultado')">📊 Resultado</button>
+      <button class="ptab" onclick="switchTab('estacoes')">🗃️ Estações</button>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- TAB: ENTRADA -->
+      <div id="tab-entrada" class="tab-pane active">
+
+        <div class="section-title">Adicionar pontos por coordenada</div>
+        <div class="field-row-3">
+          <div>
+            <label>LATITUDE</label>
+            <input type="number" id="inp-lat" step="0.0001" placeholder="-10.18">
+          </div>
+          <div>
+            <label>LONGITUDE</label>
+            <input type="number" id="inp-lon" step="0.0001" placeholder="-48.33">
+          </div>
+          <div>
+            <label>ÁREA (km²)</label>
+            <input type="number" id="inp-area" step="0.01" placeholder="92.0">
+          </div>
+        </div>
+        <button class="btn-sm" onclick="addPointFromCoords()" style="margin-bottom:10px;">＋ Adicionar ponto</button>
+
+        <div class="section-title">Colar múltiplos pontos</div>
+        <textarea id="bulk-input" placeholder="Formato: lat; lon; área(km²)&#10;-10.18; -48.33; 92.0&#10;-9.56; -48.39; 150.5&#10;..."></textarea>
+        <button class="btn-sm" onclick="addPointsFromBulk()" style="margin-bottom:10px;">＋ Importar todos</button>
+
+        <div class="section-title">Importar arquivo</div>
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <input type="file" id="fileInput" accept=".kml,.kmz,.geojson,.json,.zip,.shp" onchange="handleFileUpload(event)">
+          <div class="upload-icon">📂</div>
+          <div class="upload-label">Arraste ou <strong>clique para importar</strong></div>
+          <div class="upload-hint">KML · GeoJSON · Shapefile (.zip / .shp)</div>
+        </div>
+
+        <div class="section-title">Clique no mapa</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;">
+          <button class="btn-sm" onclick="toggleClickMode()" id="btnClick">🎯 Ativar clique</button>
+          <button class="btn-danger" onclick="clearAllPoints()">✕ Limpar tudo</button>
+        </div>
+
+        <div class="section-title">Pontos carregados <span id="points-count" class="tag">0</span></div>
+        <div id="points-list"></div>
+
+        <hr>
+
+        <div class="section-title">Configurações</div>
+        <label>CRITÉRIO DE SELEÇÃO DE ESTAÇÃO</label>
+        <select id="criterio">
+          <option value="haversine">Mais próxima — Haversine (recomendado)</option>
+          <option value="euclidiana">Mais próxima — Euclidiana</option>
+          <option value="area">Área de drenagem mais similar</option>
+        </select>
+
+        <button class="btn" onclick="calcularTodos()" id="btnCalc">
+          ⚡ Calcular Regionalização Mensal
+        </button>
+
+      </div>
+
+      <!-- TAB: RESULTADO -->
+      <div id="tab-resultado" class="tab-pane">
+        <div id="resultados-container">
+          <div style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);text-align:center;padding:40px 10px;line-height:1.6;">
+            Nenhum cálculo realizado.<br>Adicione pontos na aba "Entrada" e clique em calcular.
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: ESTAÇÕES -->
+      <div id="tab-estacoes" class="tab-pane">
+        <div class="search-row">
+          <input type="text" id="busca" placeholder="Buscar estação, código..." oninput="filtrarEstacoes()">
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="stations-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Área km²</th>
+                <th>Período</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-estacoes"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="flex:1;position:relative;overflow:hidden;">
+    <div id="map"></div>
+    <div class="map-toolbar">
+      <button class="map-btn" onclick="toggleBasemap()" id="btnBasemap">🛰️ Satélite</button>
+      <button class="map-btn" onclick="toggleStations()" id="btnStations">📍 Estações</button>
+      <button class="map-btn" onclick="fitBounds()">⊞ Enquadrar TO</button>
+    </div>
+    <div class="map-coord-bar" id="coordBar">
+      Mova o cursor · <span>WGS84</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   DADOS DAS ESTAÇÕES (Q90 mensal, m³/s)
+   q90: [jan, fev, mar, abr, mai, jun, jul, ago, set, out, nov, dez]
+   ═══════════════════════════════════════════ */
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+const ESTACOES = [
+  {codigo:"27370000",nome:"FAZENDA CRAVEIRO",area_km2:186,lat:-9.6036,lon:-48.9708,periodo:"05/00 a 12/14",q90:[2.24,3.24,5.01,4.27,2.42,1.14,0.494,0.212,0.109,0.221,0.543,1.75]},
+  {codigo:"26790000",nome:"PONTE RIO DUERÉ",area_km2:1420,lat:-11.3167,lon:-49.2667,periodo:"09/2000 a 12/2014",q90:[11,24.5,34.1,22,5.74,1.26,0.299,0.144,0.013,0.07,0.248,2.19]},
+  {codigo:"28840000",nome:"MONTANTE DO RIO RONCA",area_km2:1530,lat:-6.0428,lon:-48.1997,periodo:"10/2000 a 12/2014",q90:[16.7,27.6,20.8,28.6,23.5,16.3,14.2,12.2,11.3,12.1,13,15.7]},
+  {codigo:"28200000",nome:"PONTE RIO LONTRA",area_km2:1330,lat:-7.2075,lon:-48.2958,periodo:"04/2000 a 12/2014",q90:[19,27.8,30,32.4,17.7,14.9,9.94,7.95,8.3,9.36,10.9,16.1]},
+  {codigo:"27550000",nome:"ARAPOEMA",area_km2:1150,lat:-7.6136,lon:-49.0453,periodo:"05/1985 a 12/2014",q90:[21.4,32.6,42.5,33.6,17.9,7.69,4.85,3.15,2.5,4.28,7.63,16.3]},
+  {codigo:"28150000",nome:"MURICILÂNDIA",area_km2:1580,lat:-7.1544,lon:-48.6197,periodo:"08/1974 a 12/2014",q90:[23.6,33.9,46.3,36.6,19.9,9.59,5.45,4.15,3.67,7.13,12.1,17.7]},
+  {codigo:"21750000",nome:"LAVANDEIRA",area_km2:1040,lat:-12.7936,lon:-46.5122,periodo:"10/1974 a 12/2014",q90:[31.6,32.6,34.1,32,29.9,28.2,27.4,26.5,26.7,27.5,30,31.9]},
+  {codigo:"26730000",nome:"RIO FORMOSO I - DIRF",area_km2:9040,lat:-11.8392,lon:-49.7711,periodo:"09/2003 a 10/2020",q90:[6.06,35.5,64.4,59.7,14.1,2.56,0.879,0.317,0.626,0.676,1.75,0.841]},
+  {codigo:"27380000",nome:"PONTE RIO PIRANHAS",area_km2:1660,lat:-9.1839,lon:-49.3775,periodo:"08/80 a 12/14",q90:[35.8,41.3,48.5,37.7,19.6,5.17,1.8,1.13,0.65,1.18,5.48,21.7]},
+  {codigo:"27530000",nome:"Bernardo Sayão",area_km2:1790,lat:-7.8764,lon:-48.8789,periodo:"05/00 a 12/14",q90:[36.3,45.6,52.9,55.2,34.4,18.2,7.57,3.3,1.93,4.84,11.4,24.9]},
+  {codigo:"22190000",nome:"PORTO ALEGRE",area_km2:1780,lat:-11.6114,lon:-47.0447,periodo:"08/75 a 12/2014",q90:[38.1,45.7,46,35.8,29,26.1,24.4,20.9,20.8,21.4,28.9,36.5]},
+  {codigo:"23150000",nome:"ITACAJA",area_km2:2800,lat:-8.3917,lon:-47.7653,periodo:"08/1973 a 12/2014",q90:[42.6,51.2,65.7,53.9,34.8,22.2,17,13.4,12.5,14.9,21.9,30.9]},
+  {codigo:"26720000",nome:"PRAIA ALTA",area_km2:6610,lat:-12.4178,lon:-49.5892,periodo:"04/1986 a 12/2014",q90:[47.9,64.9,88.4,37.9,12.4,5.01,1.8,0.736,0.492,0.526,4.25,22.7]},
+  {codigo:"28240000",nome:"PIRAQUÊ",area_km2:3470,lat:-6.6717,lon:-48.4697,periodo:"08/1974 a 12/2014",q90:[49.8,97.6,113,88.6,53.4,31.1,19.3,15.8,13.4,19.4,29.2,36.7]},
+  {codigo:"23230000",nome:"JACARÉ",area_km2:4100,lat:-7.9633,lon:-47.2611,periodo:"01/1984 a 12/2014",q90:[69.7,80.4,102,74.2,56,39.9,34.9,31.4,30.3,34.9,46,56.2]},
+  {codigo:"22100000",nome:"COLONHA",area_km2:8720,lat:-12.3878,lon:-48.7106,periodo:"08/1974 a 12/2014",q90:[82.6,90.1,129,73.2,27,18.6,5.72,2.54,1.53,2.02,12.2,42.3]},
+  {codigo:"27110000",nome:"RIO DO COCO",area_km2:6370,lat:-9.5003,lon:-49.9831,periodo:"08/1999 a 12/2014",q90:[82.9,154,186,200,110,43,12.5,4.36,1.74,2.11,6.48,28.5]},
+  {codigo:"26710000",nome:"BARREIRA DO PEQUI",area_km2:8150,lat:-12.0886,lon:-49.9878,periodo:"04/1986 a 12/2014",q90:[83,239,317,246,59.8,23.1,9.14,2.53,0.71,0.35,1.41,14.3]},
+  {codigo:"22220000",nome:"PORTO JERÔNIMO",area_km2:10300,lat:-11.7586,lon:-47.8369,periodo:"08/74 a 12/14",q90:[97.2,151,129,85.3,51.6,35.4,27.2,24.1,21.8,22.6,40,82.9]},
+  {codigo:"22150000",nome:"JACINTO",area_km2:13900,lat:-11.9825,lon:-48.6575,periodo:"12/71 a 12/07",q90:[117,155,181,121,58.1,29.4,12.2,5.92,3.75,4.5,15.6,54.6]},
+  {codigo:"23250000",nome:"GOIATINS",area_km2:10100,lat:-7.7078,lon:-47.3117,periodo:"11/1971 a 12/2014",q90:[140,148,197,166,115,81.6,70.3,62.1,60.9,71.5,90.5,122]},
+  {codigo:"22680000",nome:"Jatobá (Faz. Boa Nova)",area_km2:16900,lat:-9.9953,lon:-47.4725,periodo:"01/1972 a 12/2014",q90:[281,290,329,283,208,174,157,141,139,146,190,243]},
+  {codigo:"22700000",nome:"NOVO ACORDO",area_km2:18000,lat:-9.9633,lon:-47.6747,periodo:"12/1971 a 12/2014",q90:[284,314,343,304,215,183,166,147,141,150,197,258]},
+  {codigo:"26800000",nome:"BARREIRA DA CRUZ",area_km2:35800,lat:-10.5647,lon:-49.9342,periodo:"09/1969 a 12/2014",q90:[304,572,763,1023,393,112,30.3,12.8,11.5,11.1,12.4,46]},
+  {codigo:"22900000",nome:"PORTO REAL",area_km2:44100,lat:-9.3069,lon:-47.9292,periodo:"08/69 a 12/14",q90:[677,822,935,795,495,377,314,275,259,288,403,584]},
+  {codigo:"28300000",nome:"XAMBIOÁ",area_km2:377000,lat:-6.4097,lon:-48.5422,periodo:"09/1969 a 12/2014",q90:[999,4384,7189,9444,5357,2256,1346,888,641,626,1150,2001]},
+  {codigo:"22050001",nome:"PEIXE",area_km2:128000,lat:-12.0231,lon:-48.5328,periodo:"09/1938 a 12/2014",q90:[1234,1245,1271,1122,835,693,597,553,531,610,804,1191]},
+  {codigo:"22280000",nome:"IPUEIRAS",area_km2:167000,lat:-11.2475,lon:-48.4592,periodo:"02/2001 a 03/2010",q90:[1731,1283,1756,1196,820,829,857,791,736,790,771,1153]},
+  {codigo:"22500000",nome:"MIRACEMA DO TOCANTINS",area_km2:183355,lat:-9.5675,lon:-48.3786,periodo:"07/1969 a 12/2014",q90:[1894,2063,2462,2078,1177,860,650,521,457,634,1012,1351]},
+  {codigo:"23710000",nome:"ITAGUATINS",area_km2:297000,lat:-5.7672,lon:-47.4819,periodo:"",q90:[3612,4392,5132,4875,2777,1978,1500,1292,1174,1367,1829,2637]},
+  {codigo:"23600000",nome:"TOCANTINOPOLIS",area_km2:289000,lat:-6.2886,lon:-47.3919,periodo:"",q90:[3968,4279,5398,4438,2681,1896,1440,1210,1079,1261,1809,2534]},
+  {codigo:"28850000",nome:"ARAGUATINS",area_km2:388000,lat:-5.6344,lon:-48.1297,periodo:"",q90:[4457,8045,9596,10835,6163,2590,1521,986,797,793,1220,2166]},
+  {codigo:"22250000",nome:"LOMBEIRA",area_km2:14500,lat:-11.532778,lon:-48.288611,periodo:"",q90:[138,196,217,143,66.7,42.6,31.1,26,22.4,26.8,47.9,108]},
+  {codigo:"22511000",nome:"RIO PROVIDÊNCIA",area_km2:1141.51,lat:-9.5292,lon:-48.6069,periodo:"",q90:[10.9,45.8,55.5,46.9,18.8,8.51,4,2.01,1.66,1.74,8.88,7.31]},
+  {codigo:"27300900",nome:"RIO CAIAPÓ",area_km2:4783.16,lat:-9.1261,lon:-49.7431,periodo:"",q90:[274,233,251,184,78.8,21.6,0.334,1.23,2.07,1.02,28.7,148]},
+  {codigo:"26798100",nome:"RIO FORMOSO LOROTI",area_km2:13679.51,lat:-11.2033,lon:-49.7572,periodo:"",q90:[324,393,376,322,158,40,16.9,12.4,14.1,13.9,15.4,63.7]},
+  {codigo:"26792000",nome:"FOZ RIO DUERÉ",area_km2:2322.93,lat:-11.1222,lon:-49.6303,periodo:"",q90:[30.603,47.169,62.802,56.419,43.137,17.412,3.572,0.551,1.004,0.272,2.23,27.573]},
+  {codigo:"26795100",nome:"RIO URUBU FAZ. SÃO BENTO",area_km2:1070.63,lat:-10.7825,lon:-49.4253,periodo:"",q90:[3.021,2,1.529,1.564,2.074,4.442,1.982,0.02,0.145,0.001,2.07,3.069]},
+  {codigo:"26795700",nome:"RIO URUBU FAZ. FORTALEZA",area_km2:2586.11,lat:-10.8636,lon:-49.6756,periodo:"",q90:[66.151,99.708,158.377,92.522,83.959,78.502,2.904,1.047,1.192,1.391,1.63,9.597]},
+  {codigo:"26796000",nome:"FOZ RIO XAVANTE",area_km2:2918.14,lat:-11.4011,lon:-49.6556,periodo:"",q90:[73.566,92.392,98.877,104.748,58.175,20.345,2.067,1.25,0.437,0.353,2.632,31.232]},
+  {codigo:"26798000",nome:"RIO FORMOSO II",area_km2:12744.51,lat:-11.3811,lon:-49.6819,periodo:"",q90:[152.679,226.07,303.598,334.581,197.476,51.309,19.217,14.167,0.962,1,16.942,63.117]},
+  {codigo:"26799000",nome:"FOZ RIO FORMOSO",area_km2:20732.56,lat:-10.5856,lon:-49.9264,periodo:"",q90:[233.449,393.014,565.26,564.619,396.651,84.891,9.267,5.67,5.016,7.164,8.859,81.711]},
+  {codigo:"26721000",nome:"DORILÂNDIA",area_km2:7140.03,lat:-12.2125,lon:-49.6628,periodo:"",q90:[175.438,207.219,257.538,146.481,34.122,6.814,2.731,1.058,0.646,0.894,24.093,98.993]},
+  {codigo:"26798500",nome:"FOZ DO RIO URUBU",area_km2:2661.65,lat:-10.8278,lon:-49.7956,periodo:"",q90:[52.022,73.544,69.186,66.536,68.218,57.025,41.025,20.249,18.602,18.063,18.415,30.747]},
+  {codigo:"26730000b",nome:"PROJETO RIO FORMOSO",area_km2:9040,lat:-11.8392,lon:-49.7711,periodo:"",q90:[171.662,195.647,250.197,219.599,101.247,30.355,17.138,8.775,2.842,2.625,12.486,57.79]}
+];
+
+/* ═══════════════════════════════════════════
+   MAPA
+   ═══════════════════════════════════════════ */
+const map = L.map('map', { center: [-10.2, -48.3], zoom: 7, zoomControl: true });
+
+const basemaps = {
+  osm: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap · © CARTO', maxZoom: 20, subdomains: 'abcd' }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 19 })
+};
+basemaps.osm.addTo(map);
+let currentBasemap = 'osm';
+
+function toggleBasemap() {
+  if (currentBasemap === 'osm') {
+    map.removeLayer(basemaps.osm); basemaps.satellite.addTo(map);
+    currentBasemap = 'satellite';
+    document.getElementById('btnBasemap').textContent = '🗺️ OSM';
+    document.getElementById('btnBasemap').classList.add('active');
+  } else {
+    map.removeLayer(basemaps.satellite); basemaps.osm.addTo(map);
+    currentBasemap = 'osm';
+    document.getElementById('btnBasemap').textContent = '🛰️ Satélite';
+    document.getElementById('btnBasemap').classList.remove('active');
+  }
+}
+
+map.on('mousemove', e => {
+  document.getElementById('coordBar').innerHTML =
+    `Lat: <span>${e.latlng.lat.toFixed(5)}</span> &nbsp; Lon: <span>${e.latlng.lng.toFixed(5)}</span> &nbsp;·&nbsp; <span>WGS84</span>`;
+});
+
+function fitBounds() { map.fitBounds([[-13.5, -51.5], [-2.5, -45.5]]); }
+
+/* ESTAÇÕES NO MAPA */
+const stationMarkers = [];
+let stationsVisible = true;
+const stationIcon = L.divIcon({ className: '', html: '<div class="custom-marker-station"></div>', iconSize: [10, 10], iconAnchor: [5, 5] });
+
+ESTACOES.forEach(e => {
+  const marker = L.marker([e.lat, e.lon], { icon: stationIcon })
+    .bindTooltip(`<strong>${e.nome}</strong><br>${e.codigo} · ${e.area_km2.toLocaleString('pt-BR')} km²`, { sticky: true });
+  marker.addTo(map);
+  marker.on('click', () => {
+    document.getElementById('inp-lat').value = e.lat;
+    document.getElementById('inp-lon').value = e.lon;
+    switchTab('entrada');
+  });
+  stationMarkers.push(marker);
+});
+
+function toggleStations() {
+  if (stationsVisible) { stationMarkers.forEach(m => map.removeLayer(m)); document.getElementById('btnStations').classList.remove('active'); }
+  else { stationMarkers.forEach(m => m.addTo(map)); document.getElementById('btnStations').classList.add('active'); }
+  stationsVisible = !stationsVisible;
+}
+document.getElementById('btnStations').classList.add('active');
+
+/* ═══════════════════════════════════════════
+   PONTOS DO USUÁRIO
+   ═══════════════════════════════════════════ */
+let clickMode = false;
+let userPoints = []; // {lat, lon, area, origem, marker, valid}
+let importedLayers = [];
+
+const userIcon = L.divIcon({ className: '', html: '<div class="custom-marker-pin"></div>', iconSize: [16, 16], iconAnchor: [8, 14] });
+
+function toggleClickMode() {
+  clickMode = !clickMode;
+  const btn = document.getElementById('btnClick');
+  if (clickMode) {
+    btn.textContent = '🎯 Clique ativo...';
+    btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)';
+    map.getContainer().style.cursor = 'crosshair';
+  } else {
+    btn.textContent = '🎯 Ativar clique';
+    btn.style.borderColor = ''; btn.style.color = '';
+    map.getContainer().style.cursor = '';
+  }
+}
+
+map.on('click', e => {
+  if (!clickMode) return;
+  addPoint(e.latlng.lat, e.latlng.lng, null, 'Clique no mapa');
+});
+
+function validatePoint(lat, lon) {
+  return lat >= -14 && lat <= -2 && lon >= -52 && lon <= -45;
+}
+
+function addPoint(lat, lon, area, origem) {
+  lat = parseFloat(lat); lon = parseFloat(lon);
+  if (isNaN(lat) || isNaN(lon)) return;
+  area = parseFloat(area) || null;
+
+  const marker = L.marker([lat, lon], { icon: userIcon })
+    .bindTooltip(`Ponto ${userPoints.length+1}<br>Lat: ${lat.toFixed(5)}<br>Lon: ${lon.toFixed(5)}`, { sticky: true })
+    .addTo(map);
+
+  const valid = validatePoint(lat, lon);
+  userPoints.push({ lat, lon, area, origem, marker, valid });
+  renderPointsList();
+}
+
+function addPointFromCoords() {
+  const lat = document.getElementById('inp-lat').value;
+  const lon = document.getElementById('inp-lon').value;
+  const area = document.getElementById('inp-area').value;
+  if (!lat || !lon) return;
+  addPoint(lat, lon, area, 'Coordenada manual');
+  document.getElementById('inp-lat').value = '';
+  document.getElementById('inp-lon').value = '';
+  document.getElementById('inp-area').value = '';
+}
+
+function addPointsFromBulk() {
+  const text = document.getElementById('bulk-input').value.trim();
+  if (!text) return;
+  const lines = text.split('\n').filter(l => l.trim());
+  let added = 0;
+  lines.forEach(line => {
+    const parts = line.split(/[;,\t]+/).map(s => s.trim());
+    if (parts.length >= 2) {
+      const lat = parseFloat(parts[0]);
+      const lon = parseFloat(parts[1]);
+      const area = parts.length >= 3 ? parseFloat(parts[2]) : null;
+      if (!isNaN(lat) && !isNaN(lon)) {
+        addPoint(lat, lon, area, 'Importação em lote');
+        added++;
+      }
+    }
+  });
+  if (added > 0) document.getElementById('bulk-input').value = '';
+}
+
+function removePoint(idx) {
+  const pt = userPoints[idx];
+  if (pt.marker) map.removeLayer(pt.marker);
+  userPoints.splice(idx, 1);
+  renderPointsList();
+}
+
+function updatePointArea(idx, val) {
+  userPoints[idx].area = parseFloat(val) || null;
+}
+
+function clearAllPoints() {
+  userPoints.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
+  importedLayers.forEach(l => map.removeLayer(l));
+  userPoints = []; importedLayers = [];
+  renderPointsList();
+}
+
+function renderPointsList() {
+  const list = document.getElementById('points-list');
+  document.getElementById('points-count').textContent = userPoints.length;
+
+  if (userPoints.length === 0) {
+    list.innerHTML = '<div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);text-align:center;padding:14px;">Nenhum ponto adicionado</div>';
+    return;
+  }
+
+  list.innerHTML = userPoints.map((p, i) => `
+    <div class="point-card">
+      <div class="point-card-header">
+        <div class="point-num">${i+1}</div>
+        <div class="coords">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>
+        <span class="point-status ${p.valid ? 'valid' : 'invalid'}">${p.valid ? '✓' : '⚠'}</span>
+        <button class="point-remove" onclick="removePoint(${i})">✕</button>
+      </div>
+      <div class="field-row">
+        <div>
+          <label>ÁREA (km²)</label>
+          <input type="number" value="${p.area || ''}" step="0.01" placeholder="Área contribuição"
+                 onchange="updatePointArea(${i}, this.value)" style="margin:0;">
+        </div>
+        <div>
+          <label>ORIGEM</label>
+          <input type="text" value="${p.origem}" readonly style="margin:0;color:var(--muted);font-size:0.65rem;">
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════
+   IMPORTAÇÃO DE ARQUIVOS
+   ═══════════════════════════════════════════ */
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+});
+
+function handleFileUpload(event) {
+  if (event.target.files[0]) processFile(event.target.files[0]);
+  event.target.value = '';
+}
+
+function processFile(file) {
+  const name = file.name.toLowerCase();
+  const reader = new FileReader();
+
+  if (name.endsWith('.kml') || name.endsWith('.kmz')) {
+    reader.onload = e => {
+      try {
+        const kml = new DOMParser().parseFromString(e.target.result, 'text/xml');
+        loadGeoJSON(toGeoJSON.kml(kml), file.name);
+      } catch(err) { alert('Erro KML: ' + err.message); }
+    };
+    reader.readAsText(file);
+  } else if (name.endsWith('.geojson') || name.endsWith('.json')) {
+    reader.onload = e => {
+      try { loadGeoJSON(JSON.parse(e.target.result), file.name); }
+      catch(err) { alert('Erro GeoJSON: ' + err.message); }
+    };
+    reader.readAsText(file);
+  } else if (name.endsWith('.zip')) {
+    reader.onload = e => {
+      shp(e.target.result).then(geojson => loadGeoJSON(geojson, file.name))
+        .catch(err => alert('Erro Shapefile: ' + err.message));
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    alert('Formato não suportado.');
+  }
+}
+
+function loadGeoJSON(geojson, filename) {
+  const layer = L.geoJSON(geojson, {
+    style: { color: '#00d4ff', weight: 2, opacity: 0.8, fillOpacity: 0.15 },
+    pointToLayer: (f, ll) => L.marker(ll, { icon: userIcon }),
+    onEachFeature: (feature, layer) => {
+      const props = feature.properties || {};
+      const label = props.name || props.Nome || props.NAME || 'Importado';
+      if (feature.geometry.type === 'Point') {
+        const [lon, lat] = feature.geometry.coordinates;
+        addPoint(lat, lon, null, `${filename}: ${label}`);
+      }
+      layer.bindTooltip(`<strong>${label}</strong><br><small>${filename}</small>`, { sticky: true });
+    }
+  });
+  layer.addTo(map);
+  importedLayers.push(layer);
+  try { map.fitBounds(layer.getBounds().pad(0.15)); } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════
+   CÁLCULO — REGIONALIZAÇÃO MENSAL
+   ═══════════════════════════════════════════ */
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function rankEstacoes(lat, lon, area, criterio) {
+  return ESTACOES.map(e => {
+    let dist;
+    if (criterio === 'haversine') dist = haversine(lat, lon, e.lat, e.lon);
+    else if (criterio === 'euclidiana') dist = Math.sqrt((e.lat-lat)**2+(e.lon-lon)**2);
+    else dist = area ? Math.abs(e.area_km2 - area) : haversine(lat, lon, e.lat, e.lon);
+    return { ...e, dist: +dist.toFixed(3) };
+  }).sort((a,b) => a.dist - b.dist);
+}
+
+function calcularPonto(pt, criterio) {
+  if (!pt.area || pt.area <= 0) return { error: 'Área de contribuição não informada ou inválida' };
+  const ranked = rankEstacoes(pt.lat, pt.lon, pt.area, criterio);
+  const est = ranked[0];
+
+  const meses = [];
+  for (let m = 0; m < 12; m++) {
+    const q90_est = est.q90[m];
+    const qesp = q90_est / est.area_km2;
+    const q90_reg = qesp * pt.area;
+    const q90_25 = q90_reg * 0.25;
+    meses.push({
+      mes: MESES[m],
+      qesp: qesp,
+      q90_m3s: q90_reg,
+      q90_m3h: q90_reg * 3600,
+      q90_25_m3h: q90_25 * 3600
+    });
+  }
+
+  return { estacao: est, ranked: ranked, meses: meses, area: pt.area };
+}
+
+function calcularTodos() {
+  const criterio = document.getElementById('criterio').value;
+  const container = document.getElementById('resultados-container');
+
+  const pontosValidos = userPoints.filter(p => p.valid);
+  if (pontosValidos.length === 0) {
+    container.innerHTML = '<div class="error-box">Nenhum ponto válido. Adicione pontos com coordenadas dentro do Tocantins.</div>';
+    switchTab('resultado');
+    return;
+  }
+
+  // check areas
+  const semArea = pontosValidos.filter(p => !p.area || p.area <= 0);
+  if (semArea.length > 0) {
+    container.innerHTML = `<div class="error-box">⚠ ${semArea.length} ponto(s) sem área de contribuição. Preencha o campo "Área (km²)" em cada ponto antes de calcular.</div>`;
+    switchTab('resultado');
+    return;
+  }
+
+  let html = '';
+
+  // Clean old result markers
+  if (window._resultMarkers) window._resultMarkers.forEach(m => map.removeLayer(m));
+  if (window._resultLines) window._resultLines.forEach(l => map.removeLayer(l));
+  window._resultMarkers = [];
+  window._resultLines = [];
+
+  pontosValidos.forEach((pt, idx) => {
+    const resultado = calcularPonto(pt, criterio);
+
+    if (resultado.error) {
+      html += `<div class="result-card"><div class="error-box">Ponto ${idx+1}: ${resultado.error}</div></div>`;
+      return;
+    }
+
+    const { estacao, ranked, meses, area } = resultado;
+
+    // Map markers
+    const resultIcon = L.divIcon({
+      className: '',
+      html: `<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;background:var(--warn);border:2px solid #fff;transform:rotate(-45deg);box-shadow:0 0 12px rgba(240,165,0,0.7);"></div>`,
+      iconSize: [18,18], iconAnchor: [9,16]
+    });
+    const rm = L.marker([pt.lat, pt.lon], { icon: resultIcon })
+      .bindTooltip(`Ponto ${idx+1}<br>Área: ${area} km²`, { sticky: true }).addTo(map);
+    window._resultMarkers.push(rm);
+
+    const rl = L.polyline([[pt.lat, pt.lon], [estacao.lat, estacao.lon]], {
+      color: '#f0a500', weight: 1.5, opacity: 0.5, dashArray: '6,4'
+    }).addTo(map);
+    window._resultLines.push(rl);
+
+    // Build top5 chips
+    const top5 = ranked.slice(0, 5);
+    const unid = criterio === 'area' ? 'km²' : criterio === 'haversine' ? 'km' : '°';
+
+    // Build result card
+    const pointId = `result-point-${idx}`;
+    html += `
+    <div class="result-card" id="${pointId}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div class="point-num">${idx+1}</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:0.85rem;">Ponto ${idx+1}</div>
+          <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);">
+            ${pt.lat.toFixed(5)}, ${pt.lon.toFixed(5)} · Área: ${area} km²
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:6px;">Estação utilizada</div>
+      <div class="station-selector" id="station-sel-${idx}">
+        ${top5.map((e, j) => `
+          <div class="station-chip ${j===0?'active':''}" onclick="trocarEstacao(${idx}, '${e.codigo}', this)">
+            ${e.codigo} · ${e.dist.toFixed(1)}${unid}
+          </div>
+        `).join('')}
+        <select class="all-stations-select" onchange="trocarEstacao(${idx}, this.value, null)" style="margin-top:0;">
+          <option value="">Todas as estações...</option>
+          ${ESTACOES.map(e => `<option value="${e.codigo}" ${e.codigo===estacao.codigo?'selected':''}>${e.codigo} · ${e.nome}</option>`).join('')}
+        </select>
+      </div>
+
+      <div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-bottom:6px;">
+        <strong style="color:var(--accent3);">${estacao.codigo}</strong> · ${estacao.nome} · Área: ${estacao.area_km2.toLocaleString('pt-BR')} km²
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="result-table" id="table-${idx}">
+          <thead>
+            <tr>
+              <th>Mês</th>
+              <th>Qesp (m³/s/km²)</th>
+              <th>Q90 (m³/h)</th>
+              <th>25% Q90 (m³/h)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${meses.map(m => `
+            <tr>
+              <td>${m.mes}</td>
+              <td>${m.qesp.toFixed(6)}</td>
+              <td class="highlight">${m.q90_m3h.toFixed(2)}</td>
+              <td>${m.q90_25_m3h.toFixed(2)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn-copy" onclick="copiarTabela(${idx})">📋 Copiar tabela</button>
+        <button class="btn-copy" onclick="copiarTabelaWord(${idx})">📄 Copiar p/ Word</button>
+      </div>
+    </div>`;
+  });
+
+  // Global copy all button
+  if (pontosValidos.length > 1) {
+    html += `
+    <div style="margin-top:12px;display:flex;gap:6px;">
+      <button class="btn" onclick="copiarTodosWord()" style="flex:1;">📄 Copiar todos p/ Word</button>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+  switchTab('resultado');
+}
+
+/* ═══════════════════════════════════════════
+   TROCAR ESTAÇÃO
+   ═══════════════════════════════════════════ */
+function trocarEstacao(ptIdx, codigoEst, chipEl) {
+  const est = ESTACOES.find(e => e.codigo === codigoEst);
+  if (!est) return;
+  const pt = userPoints.filter(p => p.valid)[ptIdx];
+  if (!pt) return;
+
+  // Update active chip
+  const sel = document.getElementById(`station-sel-${ptIdx}`);
+  if (sel) {
+    sel.querySelectorAll('.station-chip').forEach(c => c.classList.remove('active'));
+    if (chipEl) chipEl.classList.add('active');
+    sel.querySelector('select').value = codigoEst;
+  }
+
+  // Recalculate
+  const area = pt.area;
+  const meses = [];
+  for (let m = 0; m < 12; m++) {
+    const qesp = est.q90[m] / est.area_km2;
+    const q90_reg = qesp * area;
+    meses.push({
+      mes: MESES[m], qesp, q90_m3h: q90_reg * 3600, q90_25_m3h: q90_reg * 0.25 * 3600
+    });
+  }
+
+  // Update table
+  const table = document.getElementById(`table-${ptIdx}`);
+  if (table) {
+    table.querySelector('tbody').innerHTML = meses.map(m => `
+      <tr>
+        <td>${m.mes}</td>
+        <td>${m.qesp.toFixed(6)}</td>
+        <td class="highlight">${m.q90_m3h.toFixed(2)}</td>
+        <td>${m.q90_25_m3h.toFixed(2)}</td>
+      </tr>`).join('');
+  }
+
+  // Update station info
+  const card = document.getElementById(`result-point-${ptIdx}`);
+  if (card) {
+    const info = card.querySelector('.station-selector + div');
+    if (info) info.innerHTML = `<strong style="color:var(--accent3);">${est.codigo}</strong> · ${est.nome} · Área: ${est.area_km2.toLocaleString('pt-BR')} km²`;
+  }
+
+  // Update map line
+  if (window._resultLines && window._resultLines[ptIdx]) {
+    map.removeLayer(window._resultLines[ptIdx]);
+    window._resultLines[ptIdx] = L.polyline([[pt.lat, pt.lon], [est.lat, est.lon]], {
+      color: '#f0a500', weight: 1.5, opacity: 0.5, dashArray: '6,4'
+    }).addTo(map);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   COPIAR RESULTADOS
+   ═══════════════════════════════════════════ */
+function copiarTabela(ptIdx) {
+  const table = document.getElementById(`table-${ptIdx}`);
+  if (!table) return;
+  const rows = table.querySelectorAll('tr');
+  let text = '';
+  rows.forEach(r => {
+    const cells = r.querySelectorAll('th, td');
+    text += Array.from(cells).map(c => c.textContent.trim()).join('\t') + '\n';
+  });
+  navigator.clipboard.writeText(text).then(() => {
+    const btns = document.querySelectorAll(`#result-point-${ptIdx} .btn-copy`);
+    if (btns[0]) { btns[0].textContent = '✓ Copiado!'; btns[0].classList.add('copied'); setTimeout(() => { btns[0].textContent = '📋 Copiar tabela'; btns[0].classList.remove('copied'); }, 2000); }
+  });
+}
+
+function copiarTabelaWord(ptIdx) {
+  const pt = userPoints.filter(p => p.valid)[ptIdx];
+  const table = document.getElementById(`table-${ptIdx}`);
+  const card = document.getElementById(`result-point-${ptIdx}`);
+  if (!table || !pt) return;
+
+  const estInfo = card.querySelector('.station-selector + div');
+  let text = `PONTO ${ptIdx+1}\n`;
+  text += `Coordenadas: ${pt.lat.toFixed(5)}, ${pt.lon.toFixed(5)}\n`;
+  text += `Área de contribuição: ${pt.area} km²\n`;
+  if (estInfo) text += `Estação: ${estInfo.textContent.trim()}\n`;
+  text += '\n';
+
+  const rows = table.querySelectorAll('tr');
+  rows.forEach(r => {
+    const cells = r.querySelectorAll('th, td');
+    text += Array.from(cells).map(c => c.textContent.trim()).join('\t') + '\n';
+  });
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btns = document.querySelectorAll(`#result-point-${ptIdx} .btn-copy`);
+    if (btns[1]) { btns[1].textContent = '✓ Copiado!'; btns[1].classList.add('copied'); setTimeout(() => { btns[1].textContent = '📄 Copiar p/ Word'; btns[1].classList.remove('copied'); }, 2000); }
+  });
+}
+
+function copiarTodosWord() {
+  const pontosValidos = userPoints.filter(p => p.valid);
+  let fullText = 'REGIONALIZAÇÃO MENSAL — DISPONIBILIDADE HÍDRICA\n';
+  fullText += '═'.repeat(50) + '\n\n';
+
+  pontosValidos.forEach((pt, idx) => {
+    const table = document.getElementById(`table-${idx}`);
+    const card = document.getElementById(`result-point-${idx}`);
+    if (!table) return;
+
+    const estInfo = card ? card.querySelector('.station-selector + div') : null;
+    fullText += `PONTO ${idx+1}\n`;
+    fullText += `Coordenadas: ${pt.lat.toFixed(5)}, ${pt.lon.toFixed(5)}\n`;
+    fullText += `Área de contribuição: ${pt.area} km²\n`;
+    if (estInfo) fullText += `Estação: ${estInfo.textContent.trim()}\n`;
+    fullText += '\n';
+
+    const rows = table.querySelectorAll('tr');
+    rows.forEach(r => {
+      const cells = r.querySelectorAll('th, td');
+      fullText += Array.from(cells).map(c => c.textContent.trim()).join('\t') + '\n';
+    });
+    fullText += '\n' + '─'.repeat(50) + '\n\n';
+  });
+
+  navigator.clipboard.writeText(fullText).then(() => {
+    const btn = document.querySelector('.main .btn[onclick="copiarTodosWord()"]');
+    if (btn) { btn.textContent = '✓ Todos copiados!'; setTimeout(() => { btn.textContent = '📄 Copiar todos p/ Word'; }, 2000); }
+  });
+}
+
+/* ═══════════════════════════════════════════
+   URL PARAMETERS (integration with script.py)
+   ═══════════════════════════════════════════ */
+function loadFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const pontos = params.get('pontos');
+  if (pontos) {
+    try {
+      // Format: lat,lon,area|lat,lon,area|...
+      const items = pontos.split('|');
+      items.forEach(item => {
+        const parts = item.split(',');
+        if (parts.length >= 3) {
+          addPoint(parts[0], parts[1], parts[2], 'Script ArcGIS');
+        } else if (parts.length >= 2) {
+          addPoint(parts[0], parts[1], null, 'Script ArcGIS');
+        }
+      });
+    } catch(e) { console.error('Erro ao processar parâmetros:', e); }
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════ */
+function switchTab(id) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  const idx = ['entrada','resultado','estacoes'].indexOf(id);
+  document.querySelectorAll('.ptab')[idx].classList.add('active');
+}
+
+/* ═══════════════════════════════════════════
+   TABELA ESTAÇÕES
+   ═══════════════════════════════════════════ */
+function filtrarEstacoes() {
+  const busca = (document.getElementById('busca')?.value || '').toLowerCase();
+  const dados = ESTACOES.filter(e =>
+    e.nome.toLowerCase().includes(busca) ||
+    e.codigo.includes(busca)
+  );
+  const tbody = document.getElementById('tbody-estacoes');
+  if (!tbody) return;
+  tbody.innerHTML = dados.map(e => `
+    <tr onclick="zoomToStation('${e.codigo}')">
+      <td class="code-cell">${e.codigo}</td>
+      <td>${e.nome}</td>
+      <td>${e.area_km2.toLocaleString('pt-BR')}</td>
+      <td style="color:var(--muted);font-size:0.6rem;">${e.periodo}</td>
+    </tr>`).join('');
+}
+
+function zoomToStation(codigo) {
+  const e = ESTACOES.find(x => x.codigo === codigo);
+  if (!e) return;
+  map.setView([e.lat, e.lon], 11);
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════ */
+filtrarEstacoes();
+renderPointsList();
+fitBounds();
+loadFromURL();
+</script>
+</body>
+</html>
